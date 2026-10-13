@@ -1,0 +1,9 @@
+No.,Time,Source,Destination,Protocol,Length,Info
+1,0.000000,192.168.10.12 (ICU),192.168.1.1 (Central Server),TLSv1.3,128,Application Data [Patient Telemetry Vitals P-101]
+2,0.014210,192.168.1.1 (Central Server),192.168.10.12 (ICU),TCP,66,443 -> 52140 [ACK] Seq=1 Ack=129 Win=64128
+3,0.028900,192.168.20.15 (Cardiology),192.168.1.1 (Central Server),TLSv1.3,144,Application Data [ECG Diagnostic Alert P-204]
+4,0.045100,192.168.1.1 (Central Server),192.168.20.15 (Cardiology),TCP,66,"[TCP Retransmission] 443 -> 52142 [SYN, ACK]"
+5,0.061200,192.168.30.22 (Radiology),192.168.1.1 (Central Server),TLSv1.3,1240,Application Data [CT Scan Metadata P-309]
+6,0.075400,192.168.1.1 (Central Server),192.168.30.22 (Radiology),TCP,66,443 -> 52144 [ACK] Seq=1 Ack=1241 Win=65535
+7,0.091100,192.168.40.18 (Emergency),192.168.1.1 (Central Server),TLSv1.3,112,Application Data [Triage Urgent Alert P-412]
+8,0.105300,192.168.50.05 (Pharmacy),192.168.1.1 (Central Server),TLSv1.3,96,Application Data [Medication Verification P-505]
