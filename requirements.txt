@@ -1,0 +1,3 @@
+# Dependencies for Secure Hospital Network GUI & Performance Analysis
+# Core authenticated encryption library (AES-128-CBC + HMAC-SHA256 via Fernet)
+cryptography>=42.0.0
