@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Hospital Network — Reliable Data Transmission</title>
+  <meta name="description"
+    content="Interactive browser simulation of Reliable Data Transmission and Error Detection for the Secure Hospital Network project. Demonstrates CRC, ACK/NACK, Go-Back-N ARQ, and Sliding Window." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    /* ─── RESET & TOKENS ─────────────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #07090f;
+      --surface: #0d1117;
+      --card: #111827;
+      --card2: #161d2d;
+      --border: #1e2d45;
+      --accent: #3b82f6;
+      --accent2: #06b6d4;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --purple: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --glow-blue: 0 0 24px rgba(59, 130, 246, .35);
+      --glow-green: 0 0 20px rgba(16, 185, 129, .3);
+      --glow-red: 0 0 20px rgba(239, 68, 68, .3);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── ANIMATED BACKGROUND GRID ──────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59, 130, 246, .04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59, 130, 246, .04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── HERO HEADER ────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 56px 24px 32px;
+      background: linear-gradient(180deg, rgba(59, 130, 246, .08) 0%, transparent 100%);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(59, 130, 246, .12);
+      border: 1px solid rgba(59, 130, 246, .3);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .hero-badge .dot {
+      width: 7px;
+      height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: .5;
+        transform: scale(1.4);
+      }
+    }
+
+    .hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #e2e8f0 30%, #3b82f6 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: .95rem;
+      max-width: 600px;
+      margin: 0 auto 28px;
+    }
+
+    /* ─── MAIN LAYOUT ────────────────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+
+    /* ─── CONTROLS CARD ──────────────────────────────────────────────────── */
+    .controls-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 28px;
+    }
+
+    .controls-card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 20px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .ctrl {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ctrl label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .ctrl input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 99px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .ctrl input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(59, 130, 246, .6);
+      transition: transform .15s;
+    }
+
+    .ctrl input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    .ctrl-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .85rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .btn-run {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      box-shadow: var(--glow-blue);
+      width: 100%;
+      margin-top: 24px;
+      letter-spacing: .02em;
+    }
+
+    .btn-run:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 36px rgba(59, 130, 246, .5);
+    }
+
+    .btn-run:active {
+      transform: translateY(0);
+    }
+
+    .btn-run:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ─── NODES DIAGRAM ──────────────────────────────────────────────────── */
+    .nodes-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .dept-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      text-align: center;
+      transition: border-color .3s, box-shadow .3s;
+    }
+
+    .dept-card.active-send {
+      border-color: var(--accent);
+      box-shadow: var(--glow-blue);
+    }
+
+    .dept-card.active-recv {
+      border-color: var(--green);
+      box-shadow: var(--glow-green);
+    }
+
+    .dept-icon {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+    }
+
+    .dept-name {
+      font-weight: 700;
+      font-size: .95rem;
+      margin-bottom: 4px;
+    }
+
+    .dept-role {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 3px 10px;
+      border-radius: 99px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .role-sender {
+      background: rgba(59, 130, 246, .15);
+      color: var(--accent);
+    }
+
+    .role-receiver {
+      background: rgba(16, 185, 129, .15);
+      color: var(--green);
+    }
+
+    /* ─── CHANNEL WIRE ───────────────────────────────────────────────────── */
+    .channel-wire {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 120px;
+    }
+
+    .wire {
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      position: relative;
+      overflow: visible;
+    }
+
+    /* Animated packet dot travelling on the wire */
+    .wire-packet {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      opacity: 0;
+    }
+
+    .wire-packet.travelling {
+      animation: travel .6s ease-in-out forwards;
+    }
+
+    .wire-packet.corrupt {
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+      animation: travel-corrupt .6s ease-in-out forwards;
+    }
+
+    @keyframes travel {
+      0% {
+        opacity: 1;
+        left: 0;
+      }
+
+      100% {
+        opacity: 0;
+        left: 100%;
+      }
+    }
+
+    @keyframes travel-corrupt {
+      0% {
+        opacity: 1;
+        left: 0;
+      }
+
+      50% {
+        opacity: 1;
+        left: 50%;
+        transform: translateY(-200%) scale(1.5);
+      }
+
+      100% {
+        opacity: 0;
+        left: 100%;
+      }
+    }
+
+    .channel-label {
+      font-size: .7rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ─── FRAME TABLE ────────────────────────────────────────────────────── */
+    .section-title {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .frames-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .frame-chip {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .75rem;
+      transition: all .3s;
+    }
+
+    .frame-chip .fn {
+      color: var(--muted);
+      font-size: .65rem;
+    }
+
+    .frame-chip .fd {
+      color: var(--text);
+      word-break: break-all;
+      margin: 4px 0;
+    }
+
+    .frame-chip .fc {
+      color: var(--accent2);
+    }
+
+    .frame-chip.sending {
+      border-color: var(--accent);
+      box-shadow: var(--glow-blue);
+      background: rgba(59, 130, 246, .08);
+    }
+
+    .frame-chip.ok {
+      border-color: var(--green);
+      box-shadow: var(--glow-green);
+      background: rgba(16, 185, 129, .08);
+    }
+
+    .frame-chip.corrupted {
+      border-color: var(--red);
+      box-shadow: var(--glow-red);
+      background: rgba(239, 68, 68, .08);
+    }
+
+    .frame-chip.pending {
+      border-color: var(--yellow);
+      background: rgba(245, 158, 11, .05);
+    }
+
+    /* ─── TRANSMISSION LOG ───────────────────────────────────────────────── */
+    .log-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .log-header span {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .log-body {
+      padding: 16px 20px;
+      max-height: 380px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .8rem;
+      line-height: 1.7;
+    }
+
+    .log-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .log-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 99px;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .03);
+      opacity: 0;
+      transform: translateX(-8px);
+      animation: logIn .25s ease forwards;
+    }
+
+    @keyframes logIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .log-tag {
+      flex-shrink: 0;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+    }
+
+    .tag-send {
+      background: rgba(59, 130, 246, .2);
+      color: var(--accent);
+    }
+
+    .tag-ok {
+      background: rgba(16, 185, 129, .2);
+      color: var(--green);
+    }
+
+    .tag-err {
+      background: rgba(239, 68, 68, .2);
+      color: var(--red);
+    }
+
+    .tag-ack {
+      background: rgba(16, 185, 129, .15);
+      color: var(--green);
+    }
+
+    .tag-nack {
+      background: rgba(245, 158, 11, .2);
+      color: var(--yellow);
+    }
+
+    .tag-resend {
+      background: rgba(167, 139, 250, .2);
+      color: var(--purple);
+    }
+
+    .tag-window {
+      background: rgba(6, 182, 212, .15);
+      color: var(--accent2);
+    }
+
+    .tag-info {
+      background: rgba(100, 116, 139, .15);
+      color: var(--muted);
+    }
+
+    /* ─── STATS ROW ──────────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      text-align: center;
+      transition: border-color .3s;
+    }
+
+    .stat-card .sv {
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-card .sk {
+      font-size: .72rem;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .sv.blue {
+      color: var(--accent);
+    }
+
+    .sv.green {
+      color: var(--green);
+    }
+
+    .sv.red {
+      color: var(--red);
+    }
+
+    .sv.yellow {
+      color: var(--yellow);
+    }
+
+    .sv.purple {
+      color: var(--purple);
+    }
+
+    /* ─── DELIVERY BANNER ────────────────────────────────────────────────── */
+    .delivery-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, .12), rgba(6, 182, 212, .08));
+      border: 1px solid rgba(16, 185, 129, .35);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      text-align: center;
+      display: none;
+      animation: popIn .4s cubic-bezier(.34, 1.56, .64, 1) forwards;
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(.94);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .delivery-banner h3 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    .delivery-banner .msg {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      text-align: left;
+      margin-top: 14px;
+      word-break: break-word;
+      line-height: 1.8;
+    }
+
+    /* ─── CONCEPT CARDS ──────────────────────────────────────────────────── */
+    .concepts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .concept-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      transition: transform .2s, border-color .2s;
+    }
+
+    .concept-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+    }
+
+    .concept-card .ci {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+
+    .concept-card h4 {
+      font-size: .9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .concept-card p {
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ─── WINDOW VISUALIZER ──────────────────────────────────────────────── */
+    .window-vis {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .wf {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: var(--card2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .8rem;
+      font-weight: 700;
+      transition: all .3s;
+    }
+
+    .wf.in-window {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(6, 182, 212, .1);
+    }
+
+    .wf.sent-ok {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(16, 185, 129, .1);
+    }
+
+    .wf.sending {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(59, 130, 246, .15);
+      box-shadow: var(--glow-blue);
+      animation: blink .5s ease infinite alternate;
+    }
+
+    .wf.error {
+      border-color: var(--red);
+      color: var(--red);
+      background: rgba(239, 68, 68, .1);
+    }
+
+    @keyframes blink {
+      to {
+        opacity: .5;
+      }
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────────────────────────── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 28px;
+      border-top: 1px solid var(--border);
+      font-size: .75rem;
+      color: var(--muted);
+    }
+
+    footer span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .nodes-row {
+        grid-template-columns: 1fr;
+      }
+
+      .channel-wire {
+        transform: rotate(90deg);
+        min-width: 60px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════  HERO  ═══════════════════════════════════ -->
+  <header class="hero">
+    <div class="hero-badge"><span class="dot"></span> feature/reliable-transmission</div>
+    <h1>Secure Hospital Network<br>for Reliable Patient Data Communication</h1>
+    <p>Module: <strong style="color:var(--accent2)">Reliable Data Transmission and Error Detection</strong><br>
+      Interactive browser simulation — CRC · ACK/NACK · Go-Back-N ARQ · Sliding Window</p>
+  </header>
+
+  <!-- ═══════════════════════════  MAIN  ═══════════════════════════════════ -->
+  <main class="container">
+
+    <!-- Controls -->
+    <div class="controls-card">
+      <h2>⚙ Simulation Parameters</h2>
+      <div class="controls-grid">
+        <div class="ctrl">
+          <label>Window Size</label>
+          <input type="range" id="ctrlWindow" min="1" max="6" value="3" />
+          <span class="ctrl-value" id="valWindow">3 frames</span>
+        </div>
+        <div class="ctrl">
+          <label>Corruption Rate</label>
+          <input type="range" id="ctrlCorrupt" min="0" max="80" value="30" step="5" />
+          <span class="ctrl-value" id="valCorrupt">30%</span>
+        </div>
+        <div class="ctrl">
+          <label>Animation Speed</label>
+          <input type="range" id="ctrlSpeed" min="100" max="1200" value="600" step="100" />
+          <span class="ctrl-value" id="valSpeed">600 ms</span>
+        </div>
+        <div class="ctrl">
+          <label>Frame Size (chars)</label>
+          <input type="range" id="ctrlFrame" min="20" max="80" value="50" step="10" />
+          <span class="ctrl-value" id="valFrame">50</span>
+        </div>
+      </div>
+      <button class="btn-run" id="btnRun" onclick="startSimulation()">
+        ▶&nbsp; Run Simulation
+      </button>
+    </div>
+
+    <!-- Network Nodes -->
+    <p class="section-title">Network Nodes</p>
+    <div class="nodes-row">
+      <div class="dept-card" id="senderCard">
+        <div class="dept-icon">🏥</div>
+        <div class="dept-name">Radiology Department</div>
+        <div style="font-size:.75rem;color:var(--muted);margin:4px 0">Sends patient scan results</div>
+        <span class="dept-role role-sender">Sender</span>
+      </div>
+
+      <div class="channel-wire">
+        <div style="font-size:.7rem;color:var(--accent2);font-weight:700;margin-bottom:4px">CHANNEL</div>
+        <div class="wire" id="wire">
+          <div class="wire-packet" id="wirePacket"></div>
+        </div>
+        <div style="font-size:.7rem;color:var(--accent2);font-weight:700;margin-top:4px">ACK ↩</div>
+        <div class="channel-label" id="corruptLabel">Corruption: 30%</div>
+      </div>
+
+      <div class="dept-card" id="receiverCard">
+        <div class="dept-icon">🚑</div>
+        <div class="dept-name">Emergency Ward</div>
+        <div style="font-size:.75rem;color:var(--muted);margin:4px 0">Receives patient records</div>
+        <span class="dept-role role-receiver">Receiver</span>
+      </div>
+    </div>
+
+    <!-- Sliding Window Visualizer -->
+    <p class="section-title">Sliding Window State</p>
+    <div class="window-vis" id="windowVis"></div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:24px" id="windowInfo">Press Run to start the
+      simulation.</div>
+
+    <!-- Frame Overview -->
+    <p class="section-title">Frame Status</p>
+    <div class="frames-grid" id="framesGrid"></div>
+
+    <!-- Stats -->
+    <p class="section-title">Statistics</p>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="sv blue" id="statSent">0</div>
+        <div class="sk">Frames Sent</div>
+      </div>
+      <div class="stat-card">
+        <div class="sv green" id="statOk">0</div>
+        <div class="sk">Delivered OK</div>
+      </div>
+      <div class="stat-card">
+        <div class="sv red" id="statErr">0</div>
+        <div class="sk">Corrupted</div>
+      </div>
+      <div class="stat-card">
+        <div class="sv yellow" id="statRetx">0</div>
+        <div class="sk">Retransmissions</div>
+      </div>
+      <div class="stat-card">
+        <div class="sv purple" id="statEff">—</div>
+        <div class="sk">Efficiency</div>
+      </div>
+    </div>
+
+    <!-- Transmission Log -->
+    <div class="log-card">
+      <div class="log-header">
+        <span>📋 Transmission Log</span>
+        <span id="logCount">0 events</span>
+      </div>
+      <div class="log-body" id="logBody">
+        <div style="color:var(--muted);font-size:.8rem;padding:8px 0">Awaiting simulation…</div>
+      </div>
+    </div>
+
+    <!-- Delivery Banner -->
+    <div class="delivery-banner" id="deliveryBanner">
+      <h3>✅ Message Delivered Successfully!</h3>
+      <div style="color:var(--muted);font-size:.85rem;margin-top:4px">
+        From <strong style="color:var(--accent)">Radiology Department</strong>
+        → <strong style="color:var(--green)">Emergency Ward</strong>
+      </div>
+      <div class="msg" id="deliveredMsg"></div>
+    </div>
+
+    <!-- Concept Cards -->
+    <div class="concepts-grid">
+      <div class="concept-card">
+        <div class="ci">🧱</div>
+        <h4>Framing</h4>
+        <p>Large messages are divided into smaller, fixed-size <em>frames</em>. Each frame is sent independently so a
+          single error only requires retransmitting that frame, not the entire message.</p>
+      </div>
+      <div class="concept-card">
+        <div class="ci">🔐</div>
+        <h4>CRC-8 Error Detection</h4>
+        <p>Each frame carries a CRC-8 checksum computed by polynomial division. The receiver re-computes the CRC; a
+          mismatch means corruption was detected.</p>
+      </div>
+      <div class="concept-card">
+        <div class="ci">📨</div>
+        <h4>ACK / NACK</h4>
+        <p><strong style="color:var(--green)">ACK</strong> confirms a frame arrived correctly. <strong
+            style="color:var(--red)">NACK</strong> signals an error and requests retransmission of the failed frame.</p>
+      </div>
+      <div class="concept-card">
+        <div class="ci">🪟</div>
+        <h4>Sliding Window</h4>
+        <p>Instead of waiting for one ACK before sending the next frame, the sender keeps a <em>window</em> of frames
+          in-flight simultaneously, improving throughput.</p>
+      </div>
+      <div class="concept-card">
+        <div class="ci">🔄</div>
+        <h4>Go-Back-N ARQ</h4>
+        <p>On receiving a NACK, the sender goes <em>back</em> to the failed frame and retransmits it (and subsequent
+          frames). Simple and robust error recovery.</p>
+      </div>
+      <div class="concept-card">
+        <div class="ci">⚡</div>
+        <h4>Channel Corruption</h4>
+        <p>Real networks introduce random bit errors. The channel simulator randomly flips characters in frames to mimic
+          a noisy hospital wireless network.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>Secure Hospital Network &nbsp;|&nbsp; Module: Reliable Data Transmission &nbsp;|&nbsp;
+      Branch: <span>feature/reliable-transmission</span> &nbsp;|&nbsp; Pure HTML · CSS · JS — no libraries</p>
+  </footer>
+
+  <!-- ═══════════════════════════  SCRIPT  ══════════════════════════════════ -->
+  <script>
+    /* ──────────────────────────────────────────────────────────────────────────
+       DUMMY DATA  — completely fictional patient records
+       ────────────────────────────────────────────────────────────────────────── */
+    const DUMMY_RECORDS = [
+      "Patient: John Doe | Age: 45 | Diagnosis: Hypertension | Ward: A3",
+      "Patient: Jane Roe | Age: 30 | Diagnosis: Appendicitis | Ward: B1",
+      "Patient: Sam Ray | Age: 67 | Diagnosis: Diabetes Type 2 | Ward: C5",
+      "Patient: Ava Lee | Age: 22 | Diagnosis: Fractured Arm  | Ward: D2",
+      "Patient: Bob Cox | Age: 55 | Diagnosis: Flu Symptoms   | Ward: A7",
+      "Patient: Mia Fox | Age: 38 | Diagnosis: Migraine       | Ward: B4",
+    ];
+
+    const FULL_MESSAGE = DUMMY_RECORDS.join(" || ");
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       CRC-8 (polynomial 0x07)
+       ────────────────────────────────────────────────────────────────────────── */
+    function crc8(data) {
+      let crc = 0;
+      for (const ch of data) {
+        crc ^= ch.charCodeAt(0);
+        for (let i = 0; i < 8; i++) {
+          crc = (crc & 0x80) ? ((crc << 1) ^ 0x07) & 0xFF : (crc << 1) & 0xFF;
+        }
+      }
+      return crc;
+    }
+    function crcHex(n) { return n.toString(16).toUpperCase().padStart(2, '0'); }
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       FRAMING
+       ────────────────────────────────────────────────────────────────────────── */
+    function createFrames(message, frameSize) {
+      const frames = [];
+      for (let i = 0; i < message.length; i += frameSize) {
+        const chunk = message.slice(i, i + frameSize);
+        const crc = crc8(chunk);
+        frames.push({ seq: frames.length, data: chunk, crc, crcHex: crcHex(crc) });
+      }
+      return frames;
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       CHANNEL CORRUPTION  (seeded LCG so behaviour is reproducible-ish per run)
+       ────────────────────────────────────────────────────────────────────────── */
+    let lcgState = 42;
+    function lcgRand() {
+      lcgState = (lcgState * 1664525 + 1013904223) >>> 0;
+      return lcgState / 0xFFFFFFFF;
+    }
+    function resetRng(seed = 42) { lcgState = seed; }
+
+    function corruptData(data) {
+      const pos = Math.floor(lcgRand() * data.length);
+      const orig = data.charCodeAt(pos);
+      const rep = String.fromCharCode((orig + 1 + Math.floor(lcgRand() * 24)) % 128);
+      return data.slice(0, pos) + rep + data.slice(pos + 1);
+    }
+
+    function transmit(frame, corruptionRate) {
+      const wasCorrupted = lcgRand() < corruptionRate;
+      const received = { ...frame, data: wasCorrupted ? corruptData(frame.data) : frame.data };
+      return { received, wasCorrupted };
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       GO-BACK-N  — build the full event sequence synchronously, then animate
+       ────────────────────────────────────────────────────────────────────────── */
+    function buildEvents(frames, windowSize, corruptionRate) {
+      resetRng();
+      const events = [];
+      const delivered = new Array(frames.length).fill(null);
+      const stats = { sent: 0, corrupted: 0, retransmissions: 0 };
+      let base = 0;
+
+      while (base < frames.length) {
+        const winEnd = Math.min(base + windowSize, frames.length);
+        const window = Array.from({ length: winEnd - base }, (_, i) => base + i);
+
+        events.push({ type: 'window', base, window: [...window] });
+
+        let errorAt = null;
+
+        for (const seq of window) {
+          const frame = frames[seq];
+          events.push({ type: 'send', seq, crcHex: frame.crcHex, preview: frame.data.slice(0, 18) + '…' });
+          stats.sent++;
+
+          const { received, wasCorrupted } = transmit(frame, corruptionRate);
+
+          if (wasCorrupted) {
+            stats.corrupted++;
+            events.push({ type: 'corrupt', seq });
+          }
+
+          // Receiver CRC check
+          const receivedCRC = crc8(received.data);
+          if (receivedCRC === received.crc) {
+            events.push({ type: 'ok', seq, preview: received.data.slice(0, 18) + '…' });
+            events.push({ type: 'ack', seq });
+            delivered[seq] = received;
+          } else {
+            events.push({ type: 'error', seq });
+            events.push({ type: 'nack', seq });
+            if (errorAt === null) errorAt = seq;
+            break;
+          }
+        }
+
+        if (errorAt === null) {
+          base = winEnd;
+        } else {
+          events.push({ type: 'resend', seq: errorAt });
+          stats.retransmissions += winEnd - errorAt;
+          base = errorAt;
+        }
+      }
+
+      return { events, delivered, stats };
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       DOM HELPERS
+       ────────────────────────────────────────────────────────────────────────── */
+    const $ = id => document.getElementById(id);
+
+    let logCount = 0;
+
+    function addLog(tag, cls, text) {
+      logCount++;
+      $('logCount').textContent = logCount + ' events';
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.innerHTML = `<span class="log-tag ${cls}">${tag}</span><span>${text}</span>`;
+      $('logBody').appendChild(div);
+      $('logBody').scrollTop = $('logBody').scrollHeight;
+    }
+
+    function setStat(id, val) { $(id).textContent = val; }
+
+    function setFrameState(seq, state) {
+      const chip = document.querySelector(`.frame-chip[data-seq="${seq}"]`);
+      if (!chip) return;
+      chip.className = 'frame-chip ' + state;
+    }
+
+    function renderWindowVis(frames, window, base) {
+      const vis = $('windowVis');
+      vis.innerHTML = '';
+      frames.forEach((_, i) => {
+        const div = document.createElement('div');
+        div.className = 'wf';
+        div.textContent = i;
+        if (i < base) div.className = 'wf sent-ok';
+        else if (window.includes(i)) div.className = 'wf in-window';
+        vis.appendChild(div);
+      });
+    }
+
+    function highlightWindowFrame(seq, cls) {
+      const divs = $('windowVis').querySelectorAll('.wf');
+      if (divs[seq]) divs[seq].className = 'wf ' + cls;
+    }
+
+    function animateWire(corrupted) {
+      const p = $('wirePacket');
+      p.className = 'wire-packet';          // reset
+      void p.offsetWidth;                   // reflow
+      p.className = 'wire-packet ' + (corrupted ? 'corrupt' : 'travelling');
+    }
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       CONTROLS  (sliders)
+       ────────────────────────────────────────────────────────────────────────── */
+    $('ctrlWindow').oninput = () => $('valWindow').textContent = $('ctrlWindow').value + ' frames';
+    $('ctrlCorrupt').oninput = () => { $('valCorrupt').textContent = $('ctrlCorrupt').value + '%'; $('corruptLabel').textContent = 'Corruption: ' + $('ctrlCorrupt').value + '%'; };
+    $('ctrlSpeed').oninput = () => $('valSpeed').textContent = $('ctrlSpeed').value + ' ms';
+    $('ctrlFrame').oninput = () => $('valFrame').textContent = $('ctrlFrame').value;
+
+    /* ──────────────────────────────────────────────────────────────────────────
+       MAIN SIMULATION RUNNER
+       ────────────────────────────────────────────────────────────────────────── */
+    async function startSimulation() {
+      const windowSize = parseInt($('ctrlWindow').value);
+      const corruptionRate = parseInt($('ctrlCorrupt').value) / 100;
+      const speed = parseInt($('ctrlSpeed').value);
+      const frameSize = parseInt($('ctrlFrame').value);
+
+      // Reset UI
+      $('btnRun').disabled = true;
+      $('logBody').innerHTML = '';
+      $('deliveryBanner').style.display = 'none';
+      logCount = 0;
+      ['statSent', 'statOk', 'statErr', 'statRetx'].forEach(id => setStat(id, '0'));
+      setStat('statEff', '—');
+
+      // Build frames
+      const frames = createFrames(FULL_MESSAGE, frameSize);
+
+      // Render frame chips
+      const grid = $('framesGrid');
+      grid.innerHTML = '';
+      frames.forEach(f => {
+        const chip = document.createElement('div');
+        chip.className = 'frame-chip';
+        chip.dataset.seq = f.seq;
+        chip.innerHTML = `<div class="fn">Frame #${f.seq.toString().padStart(2, '0')}</div>
+      <div class="fd">${f.data.slice(0, 16)}…</div>
+      <div class="fc">CRC: ${f.crcHex}</div>`;
+        grid.appendChild(chip);
+      });
+
+      // Build window visualizer
+      renderWindowVis(frames, [], 0);
+
+      // Build full event list
+      const { events, delivered, stats } = buildEvents(frames, windowSize, corruptionRate);
+
+      // Animate events
+      let sent = 0, ok = 0, err = 0, retx = 0;
+
+      const delay = ms => new Promise(r => setTimeout(r, ms));
+
+      for (const ev of events) {
+        await delay(speed);
+
+        switch (ev.type) {
+
+          case 'window':
+            renderWindowVis(frames, ev.window, ev.base);
+            $('windowInfo').textContent = `Window base=${ev.base} | In-flight: [${ev.window.join(', ')}]`;
+            addLog('WINDOW', 'tag-window',
+              `base=${ev.base} | frames in window: [${ev.window.join(', ')}]`);
+            $('senderCard').className = 'dept-card active-send';
+            break;
+
+          case 'send':
+            setFrameState(ev.seq, 'sending');
+            highlightWindowFrame(ev.seq, 'sending');
+            animateWire(false);
+            sent++;
+            setStat('statSent', sent);
+            addLog('SEND', 'tag-send', `Frame [${ev.seq.toString().padStart(2, '0')}] | CRC: ${ev.crcHex} | "${ev.preview}"`);
+            break;
+
+          case 'corrupt':
+            setFrameState(ev.seq, 'corrupted');
+            highlightWindowFrame(ev.seq, 'error');
+            animateWire(true);
+            err++;
+            setStat('statErr', err);
+            addLog('CORRUPT', 'tag-err', `Frame [${ev.seq.toString().padStart(2, '0')}] — bit-flip injected`);
+            break;
+
+          case 'ok':
+            setFrameState(ev.seq, 'ok');
+            highlightWindowFrame(ev.seq, 'sent-ok');
+            ok++;
+            setStat('statOk', ok);
+            $('receiverCard').className = 'dept-card active-recv';
+            addLog('OK', 'tag-ok', `Frame [${ev.seq.toString().padStart(2, '0')}] — CRC verified ✓`);
+            break;
+
+          case 'error':
+            addLog('ERROR', 'tag-err', `Frame [${ev.seq.toString().padStart(2, '0')}] — CRC mismatch!`);
+            $('receiverCard').className = 'dept-card';
+            break;
+
+          case 'ack':
+            addLog('ACK', 'tag-ack', `Frame [${ev.seq.toString().padStart(2, '0')}] acknowledged`);
+            break;
+
+          case 'nack':
+            addLog('NACK', 'tag-nack', `Frame [${ev.seq.toString().padStart(2, '0')}] — retransmit requested`);
+            break;
+
+          case 'resend':
+            retx++;
+            setStat('statRetx', retx);
+            setFrameState(ev.seq, 'pending');
+            highlightWindowFrame(ev.seq, 'in-window');
+            addLog('RESEND', 'tag-resend', `Going back to Frame [${ev.seq.toString().padStart(2, '0')}]`);
+            $('senderCard').className = 'dept-card active-send';
+            $('receiverCard').className = 'dept-card';
+            break;
+        }
+      }
+
+      // Final efficiency
+      const eff = ((frames.length / sent) * 100).toFixed(1);
+      setStat('statEff', eff + '%');
+
+      // Delivery banner
+      await delay(speed);
+      const reconstructed = delivered.map(f => f.data).join('');
+      $('deliveredMsg').innerHTML = DUMMY_RECORDS
+        .map(r => `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,.06)">• ${r}</div>`)
+        .join('');
+      $('deliveryBanner').style.display = 'block';
+
+      addLog('DONE', 'tag-info', 'All frames delivered. Message reassembled successfully.');
+      $('btnRun').disabled = false;
+    }
+  </script>
+</body>
+
+</html>
