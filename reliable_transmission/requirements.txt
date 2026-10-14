@@ -1,0 +1,14 @@
+# reliable_transmission/requirements.txt
+# ----------------------------------------
+# This project uses ONLY Python standard library modules.
+# No third-party packages are required.
+#
+# Standard modules used:
+#   - random      (for channel corruption simulation)
+#   - copy        (for deep-copying frame dicts)
+#   - argparse    (for CLI argument parsing)
+#   - sys         (for path manipulation)
+#   - dataclasses (for Department node definition)
+#
+# Python version: 3.8 or higher recommended.
+# Run:  python main.py
