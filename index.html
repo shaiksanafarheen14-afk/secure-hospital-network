@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Secure Hospital Network — Reliable Data Transmission</title>
+  <meta name="description"
+    content="Browser simulation of reliable patient data communication using CRC, ACK/NAK, Stop-and-Wait and Go-Back-N ARQ protocols." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700;900&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* =====================================================================
+       DESIGN SYSTEM — CSS CUSTOM PROPERTIES
+       ===================================================================== */
+    :root {
+      --bg-deep: #020d1a;
+      --bg-panel: rgba(5, 28, 55, 0.75);
+      --bg-glass: rgba(0, 180, 220, 0.05);
+      --border: rgba(0, 220, 255, 0.18);
+      --border-glow: rgba(0, 220, 255, 0.5);
+
+      --cyan: #00e5ff;
+      --cyan2: #00b4d8;
+      --green: #00ff88;
+      --red: #ff3860;
+      --yellow: #ffd166;
+      --purple: #a855f7;
+      --white: #e8f4f8;
+      --muted: #5a8a9f;
+
+      --font-main: 'Outfit', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+
+      --radius: 14px;
+      --speed: 0.35s;
+    }
+
+    /* =====================================================================
+       RESET & BASE
+       ===================================================================== */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--white);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* animated hex-grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0, 180, 220, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(168, 85, 247, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* =====================================================================
+       LAYOUT
+       ===================================================================== */
+    .page-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* =====================================================================
+       HEADER
+       ===================================================================== */
+    header {
+      text-align: center;
+      padding: 28px 20px 20px;
+    }
+
+    header .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 18px;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 14px;
+    }
+
+    header h1 {
+      font-size: clamp(1.4rem, 3vw, 2.2rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    header h2 {
+      font-family: var(--font-mono);
+      font-size: clamp(0.8rem, 1.8vw, 1.05rem);
+      font-weight: 400;
+      color: var(--cyan);
+      letter-spacing: 0.12em;
+      margin-top: 10px;
+      opacity: 0.85;
+      text-shadow: 0 0 14px rgba(0, 229, 255, 0.45);
+    }
+
+    header h2 .slash {
+      color: var(--muted);
+      margin: 0 4px;
+    }
+
+    header p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* =====================================================================
+       GLASS PANEL
+       ===================================================================== */
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan2), transparent);
+      opacity: 0.6;
+    }
+
+    .panel-title {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--cyan2);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title::before {
+      content: '';
+      display: block;
+      width: 3px;
+      height: 14px;
+      background: var(--cyan);
+      border-radius: 2px;
+    }
+
+    /* =====================================================================
+       CONTROL PANEL
+       ===================================================================== */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      align-items: end;
+    }
+
+    .ctrl-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.06em;
+    }
+
+    .ctrl-group .val-display {
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    /* custom range slider */
+    input[type=range] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(0, 180, 220, 0.2);
+      outline: none;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+      cursor: pointer;
+    }
+
+    /* custom select */
+    select {
+      background: rgba(0, 180, 220, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--white);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      cursor: pointer;
+      width: 100%;
+      outline: none;
+    }
+
+    select:focus {
+      border-color: var(--cyan);
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-family: var(--font-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all var(--speed);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan2), #0077b6);
+      color: #000;
+      border-color: var(--cyan);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 28px rgba(0, 229, 255, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--yellow);
+      border-color: var(--yellow);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 209, 102, 0.1);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 56, 96, 0.1);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* =====================================================================
+       MAIN SIMULATION AREA — 3-COLUMN
+       ===================================================================== */
+    .sim-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr 260px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* Department cards */
+    .dept-card {
+      text-align: center;
+    }
+
+    .dept-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      position: relative;
+    }
+
+    .dept-icon.sender {
+      background: radial-gradient(circle, rgba(0, 229, 255, 0.25), rgba(0, 100, 150, 0.1));
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+    }
+
+    .dept-icon.receiver {
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.2), rgba(0, 100, 50, 0.1));
+      border: 2px solid var(--green);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
+    }
+
+    .dept-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .dept-role {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .dept-stats {
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.78rem;
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+
+    .stat-label {
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+    }
+
+    .stat-value.ok {
+      color: var(--green);
+    }
+
+    .stat-value.warn {
+      color: var(--yellow);
+    }
+
+    .stat-value.err {
+      color: var(--red);
+    }
+
+    /* pulse ring animation on icon */
+    @keyframes pulse-ring {
+      0% {
+        box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 14px rgba(0, 229, 255, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 229, 255, 0);
+      }
+    }
+
+    .dept-icon.sender.active {
+      animation: pulse-ring 1.4s infinite;
+    }
+
+    .dept-icon.receiver.active {
+      animation: pulse-ring 1.4s infinite;
+      box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4);
+    }
+
+    /* =====================================================================
+       CHANNEL VISUALIZATION (center)
+       ===================================================================== */
+    .channel-area {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Message display */
+    .message-box {
+      background: rgba(0, 180, 220, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--cyan);
+      word-break: break-all;
+    }
+
+    .message-box span {
+      color: var(--muted);
+      font-size: 0.7rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Frames row */
+    .frames-container {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .frame-chip {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      min-width: 90px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .frame-chip .fc-seq {
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    .frame-chip .fc-data {
+      color: var(--white);
+      margin: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100px;
+    }
+
+    .frame-chip .fc-crc {
+      color: var(--cyan2);
+      font-size: 0.62rem;
+    }
+
+    .frame-chip.state-idle {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .frame-chip.state-sending {
+      background: rgba(0, 229, 255, 0.08);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+    }
+
+    .frame-chip.state-ok {
+      background: rgba(0, 255, 136, 0.08);
+      border-color: var(--green);
+    }
+
+    .frame-chip.state-corrupt {
+      background: rgba(255, 56, 96, 0.1);
+      border-color: var(--red);
+    }
+
+    .frame-chip.state-retry {
+      background: rgba(255, 209, 102, 0.08);
+      border-color: var(--yellow);
+    }
+
+    /* Status badge on frame */
+    .frame-status {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .frame-status.ok {
+      background: rgba(0, 255, 136, 0.2);
+      color: var(--green);
+    }
+
+    .frame-status.bad {
+      background: rgba(255, 56, 96, 0.2);
+      color: var(--red);
+    }
+
+    .frame-status.wait {
+      background: rgba(0, 229, 255, 0.15);
+      color: var(--cyan);
+    }
+
+    /* =====================================================================
+       SLIDING WINDOW VISUALISER
+       ===================================================================== */
+    .window-track {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 6px 0 10px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--cyan2) transparent;
+    }
+
+    .w-slot {
+      min-width: 48px;
+      height: 52px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+
+    .w-slot .ws-num {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .w-slot .ws-tag {
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .w-slot.ws-acked {
+      background: rgba(0, 255, 136, 0.12);
+      border-color: var(--green);
+    }
+
+    .w-slot.ws-acked .ws-num {
+      color: var(--green);
+    }
+
+    .w-slot.ws-acked .ws-tag {
+      color: rgba(0, 255, 136, 0.6);
+    }
+
+    .w-slot.ws-sending {
+      background: rgba(0, 229, 255, 0.12);
+      border-color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+    }
+
+    .w-slot.ws-sending .ws-num {
+      color: var(--cyan);
+    }
+
+    .w-slot.ws-sending .ws-tag {
+      color: var(--cyan2);
+    }
+
+    .w-slot.ws-corrupt {
+      background: rgba(255, 56, 96, 0.12);
+      border-color: var(--red);
+    }
+
+    .w-slot.ws-corrupt .ws-num {
+      color: var(--red);
+    }
+
+    .w-slot.ws-corrupt .ws-tag {
+      color: rgba(255, 56, 96, 0.7);
+    }
+
+    .w-slot.ws-window {
+      background: rgba(0, 180, 220, 0.05);
+      border-color: rgba(0, 180, 220, 0.4);
+      border-style: dashed;
+    }
+
+    .w-slot.ws-window .ws-num {
+      color: var(--cyan2);
+    }
+
+    .w-slot.ws-window .ws-tag {
+      color: var(--muted);
+    }
+
+    .w-slot.ws-outside {
+      background: transparent;
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .w-slot.ws-outside .ws-num {
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    .w-slot.ws-outside .ws-tag {
+      color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* =====================================================================
+       ANIMATED FRAME PACKET IN TRANSIT
+       ===================================================================== */
+    .channel-pipe {
+      position: relative;
+      height: 54px;
+      border-radius: 10px;
+      background: rgba(0, 180, 220, 0.04);
+      border: 1px solid rgba(0, 180, 220, 0.12);
+      overflow: hidden;
+    }
+
+    .channel-pipe::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: repeating-linear-gradient(90deg, transparent 0 6px, rgba(0, 229, 255, 0.15) 6px 12px);
+      transform: translateY(-50%);
+    }
+
+    .pipe-label {
+      position: absolute;
+      top: 4px;
+      left: 10px;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .packet-anim {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(90deg, var(--cyan2), var(--cyan));
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: #000;
+      font-weight: 700;
+      white-space: nowrap;
+      animation: none;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 0 14px rgba(0, 229, 255, 0.5);
+    }
+
+    .packet-anim.corrupt {
+      background: linear-gradient(90deg, #cc1a3a, var(--red));
+      box-shadow: 0 0 14px rgba(255, 56, 96, 0.5);
+    }
+
+    .packet-anim.ack-back {
+      background: linear-gradient(90deg, #007a3d, var(--green));
+      box-shadow: 0 0 14px rgba(0, 255, 136, 0.45);
+      color: #000;
+    }
+
+    .packet-anim.nak-back {
+      background: linear-gradient(90deg, #cc1a3a, var(--red));
+      box-shadow: 0 0 14px rgba(255, 56, 96, 0.5);
+    }
+
+    @keyframes fly-forward {
+      0% {
+        left: 2%;
+        opacity: 1;
+      }
+
+      100% {
+        left: 96%;
+        opacity: 1;
+      }
+    }
+
+    @keyframes fly-back {
+      0% {
+        left: 96%;
+        opacity: 1;
+      }
+
+      100% {
+        left: 2%;
+        opacity: 1;
+      }
+    }
+
+    .flying-fwd {
+      animation: fly-forward 0.8s ease-in-out forwards;
+    }
+
+    .flying-bck {
+      animation: fly-back 0.6s ease-in-out forwards;
+    }
+
+    /* =====================================================================
+       PROTOCOL TABS
+       ===================================================================== */
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 7px 18px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-main);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 229, 255, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* =====================================================================
+       PROGRESS BAR
+       ===================================================================== */
+    .progress-wrap {
+      margin: 12px 0;
+    }
+
+    .progress-wrap label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--cyan2), var(--cyan));
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+    }
+
+    .progress-bar-fill.complete {
+      background: linear-gradient(90deg, #007a3d, var(--green));
+    }
+
+    /* =====================================================================
+       LOG TERMINAL
+       ===================================================================== */
+    .log-terminal {
+      background: rgba(0, 5, 12, 0.85);
+      border: 1px solid rgba(0, 180, 220, 0.15);
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.6;
+      height: 280px;
+      overflow-y: auto;
+      padding: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--cyan2) transparent;
+    }
+
+    .log-terminal::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .log-terminal::-webkit-scrollbar-thumb {
+      background: var(--cyan2);
+      border-radius: 3px;
+    }
+
+    .log-entry {
+      padding: 2px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .log-ts {
+      color: rgba(0, 229, 255, 0.4);
+      flex-shrink: 0;
+    }
+
+    .log-ok {
+      color: var(--green);
+    }
+
+    .log-err {
+      color: var(--red);
+    }
+
+    .log-warn {
+      color: var(--yellow);
+    }
+
+    .log-info {
+      color: var(--cyan2);
+    }
+
+    .log-done {
+      color: var(--purple);
+      font-weight: 700;
+    }
+
+    .log-sep {
+      color: rgba(0, 180, 220, 0.3);
+      letter-spacing: 0.05em;
+    }
+
+    /* =====================================================================
+       STATS STRIP
+       ===================================================================== */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: var(--bg-glass);
+      text-align: center;
+    }
+
+    .stat-card .sc-val {
+      font-size: 1.8rem;
+      font-weight: 900;
+      line-height: 1;
+      font-family: var(--font-mono);
+    }
+
+    .stat-card .sc-lbl {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .stat-card.cyan .sc-val {
+      color: var(--cyan);
+    }
+
+    .stat-card.green .sc-val {
+      color: var(--green);
+    }
+
+    .stat-card.red .sc-val {
+      color: var(--red);
+    }
+
+    .stat-card.yellow .sc-val {
+      color: var(--yellow);
+    }
+
+    .stat-card.purple .sc-val {
+      color: var(--purple);
+    }
+
+    /* =====================================================================
+       RESULT BANNER
+       ===================================================================== */
+    .result-banner {
+      display: none;
+      border-radius: 10px;
+      padding: 16px 20px;
+      border: 1px solid;
+      font-size: 0.85rem;
+    }
+
+    .result-banner.success {
+      display: block;
+      background: rgba(0, 255, 136, 0.07);
+      border-color: var(--green);
+    }
+
+    .result-banner.fail {
+      display: block;
+      background: rgba(255, 56, 96, 0.07);
+      border-color: var(--red);
+    }
+
+    .result-banner strong {
+      font-size: 1rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .result-banner code {
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* =====================================================================
+       RESPONSIVE
+       ===================================================================== */
+    @media (max-width: 900px) {
+      .sim-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .dept-card {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        text-align: left;
+      }
+
+      .dept-icon {
+        margin: 0;
+        flex-shrink: 0;
+      }
+    }
+
+    /* =====================================================================
+       SCROLLBAR GLOBAL
+       ===================================================================== */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 180, 220, 0.3);
+      border-radius: 3px;
+    }
+
+    /* blink cursor for active dept */
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .cursor-blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    /* spinning loader */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(0, 229, 255, 0.3);
+      border-top-color: var(--cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-wrap">
+
+    <!-- ===== HEADER ===== -->
+    <header>
+      <h1>Secure Hospital Network<br />Reliable Patient Data Communication</h1>
+      <h2>Feature/reliable-transmission</h2>
+      <p>Module: Reliable Data Transmission &amp; Error Detection &nbsp;&mdash;&nbsp; CRC &bull; ACK/NAK &bull;
+        Go-Back-N ARQ &bull; Sliding Window</p>
+    </header>
+
+    <!-- ===== CONTROL PANEL ===== -->
+    <div class="panel">
+      <div class="panel-title">Control Panel</div>
+      <div class="controls-grid">
+
+        <div class="ctrl-group">
+          <label>Channel &amp; Message <span class="val-display" id="chanLabel"></span></label>
+          <select id="channelSelect">
+            <option value="ER_to_ICU_0">ER &rarr; ICU &nbsp;|&nbsp; P001: Stable, BP 120/80</option>
+            <option value="ER_to_ICU_1" selected>ER &rarr; ICU &nbsp;|&nbsp; P002: Critical, BP 90/60</option>
+            <option value="ER_to_ICU_2">ER &rarr; ICU &nbsp;|&nbsp; P003: Improving, Temp 98.6F</option>
+            <option value="Lab_to_Ward_0">Lab &rarr; Ward &nbsp;|&nbsp; P004: Blood Sugar Normal</option>
+            <option value="Lab_to_Ward_1">Lab &rarr; Ward &nbsp;|&nbsp; P005: HbA1c 6.5 PreDiabetic</option>
+            <option value="Pharmacy_to_ICU_0">Pharmacy &rarr; ICU &nbsp;|&nbsp; P007: Amoxicillin 500mg</option>
+          </select>
+        </div>
+
+        <div class="ctrl-group">
+          <label>Protocol</label>
+          <select id="protocolSelect">
+            <option value="saw">Stop-and-Wait (Window = 1)</option>
+            <option value="gbn" selected>Go-Back-N ARQ (Sliding Window)</option>
+            <option value="both">Run Both &amp; Compare</option>
+          </select>
+        </div>
+
+        <div class="ctrl-group">
+          <label>Corruption Rate: <span class="val-display" id="corrVal">35%</span></label>
+          <input type="range" id="corrRate" min="0" max="90" value="35" />
+        </div>
+
+        <div class="ctrl-group">
+          <label>Window Size (Go-Back-N): <span class="val-display" id="winVal">3</span></label>
+          <input type="range" id="winSize" min="1" max="6" value="3" />
+        </div>
+
+        <div class="ctrl-group">
+          <label>Animation Speed</label>
+          <select id="speedSelect">
+            <option value="900">Slow</option>
+            <option value="500" selected>Normal</option>
+            <option value="200">Fast</option>
+            <option value="50">Instant</option>
+          </select>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btnStart">&#9654; &nbsp;Run Simulation</button>
+            <button class="btn btn-secondary" id="btnPause" disabled>&#9646;&#9646; Pause</button>
+            <button class="btn btn-danger" id="btnReset">&#8635; Reset</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== SIMULATION AREA ===== -->
+    <div class="sim-layout">
+
+      <!-- SENDER DEPT -->
+      <div class="panel dept-card" id="senderCard">
+        <div class="dept-icon sender" id="senderIcon">&#127973;</div>
+        <div>
+          <div class="dept-name" id="senderName">Emergency Room</div>
+          <div class="dept-role">Sender Node</div>
+        </div>
+        <div class="dept-stats" id="senderStats">
+          <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value ok"
+              id="sStatStatus">READY</span></div>
+          <div class="stat-row"><span class="stat-label">Frames Sent</span><span class="stat-value"
+              id="sStatSent">0</span></div>
+          <div class="stat-row"><span class="stat-label">Retransmits</span><span class="stat-value warn"
+              id="sStatRetx">0</span></div>
+          <div class="stat-row"><span class="stat-label">Window Base</span><span class="stat-value"
+              id="sStatBase">—</span></div>
+        </div>
+      </div>
+
+      <!-- CENTRE: Channel + window visualiser -->
+      <div class="channel-area">
+
+        <!-- Message + frames -->
+        <div class="panel">
+          <div class="panel-title">Message &amp; Frame Breakdown</div>
+          <div class="message-box">
+            <span>Full Message (dummy data — no real patient info)</span>
+            <span id="fullMessage" style="color:var(--white);">—</span>
+          </div>
+          <div style="margin-top:12px; font-size:0.72rem; color:var(--muted); margin-bottom:6px;">Frames (Frame Size =
+            20 chars)</div>
+          <div class="frames-container" id="framesContainer">
+            <div style="color:var(--muted);font-size:0.8rem;">Select a channel and run the simulation.</div>
+          </div>
+        </div>
+
+        <!-- Protocol tabs -->
+        <div class="panel">
+          <div class="tab-row" id="tabRow">
+            <button class="tab-btn active" data-tab="channel">Channel</button>
+            <button class="tab-btn" data-tab="window">Sliding Window</button>
+          </div>
+
+          <!-- Channel pipe -->
+          <div id="tabChannel">
+            <div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">Live frame transmission animation
+            </div>
+            <div class="channel-pipe" id="fwdPipe">
+              <span class="pipe-label">&#8594; SENDER TO RECEIVER</span>
+              <div class="packet-anim" id="pktFwd"></div>
+            </div>
+            <div class="channel-pipe" style="margin-top:8px;" id="bckPipe">
+              <span class="pipe-label">&#8592; ACK / NAK RESPONSE</span>
+              <div class="packet-anim" id="pktBck"></div>
+            </div>
+          </div>
+
+          <!-- Sliding window track -->
+          <div id="tabWindow" style="display:none;">
+            <div style="font-size:0.72rem; color:var(--muted); margin-bottom:8px;">
+              <span style="color:var(--green);">&#9646;</span> ACKed &nbsp;
+              <span style="color:var(--cyan);">&#9646;</span> In-Window / Sent &nbsp;
+              <span style="color:var(--red);">&#9646;</span> Corrupted &nbsp;
+              <span style="color:rgba(0,180,220,0.5);">&#9646;</span> In Window (pending) &nbsp;
+              <span style="color:rgba(255,255,255,0.15);">&#9646;</span> Outside Window
+            </div>
+            <div class="window-track" id="windowTrack"></div>
+            <div style="margin-top:8px; font-size:0.72rem; color:var(--muted);">
+              Base: <span style="color:var(--cyan);" id="wBase">—</span> &nbsp;|&nbsp;
+              Next: <span style="color:var(--yellow);" id="wNext">—</span> &nbsp;|&nbsp;
+              Window: <span style="color:var(--purple);" id="wSize">—</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Progress -->
+        <div class="panel">
+          <div class="panel-title">Transmission Progress</div>
+          <div class="progress-wrap">
+            <label><span>Overall</span><span id="progPct">0%</span></label>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progBar" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="result-banner" id="resultBanner"></div>
+        </div>
+
+      </div>
+
+      <!-- RECEIVER DEPT -->
+      <div class="panel dept-card" id="receiverCard">
+        <div class="dept-icon receiver" id="receiverIcon">&#128137;</div>
+        <div>
+          <div class="dept-name" id="receiverName">ICU</div>
+          <div class="dept-role">Receiver Node</div>
+        </div>
+        <div class="dept-stats">
+          <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value ok"
+              id="rStatStatus">WAITING</span></div>
+          <div class="stat-row"><span class="stat-label">Frames Recv</span><span class="stat-value"
+              id="rStatRecv">0</span></div>
+          <div class="stat-row"><span class="stat-label">CRC Errors</span><span class="stat-value err"
+              id="rStatErr">0</span></div>
+          <div class="stat-row"><span class="stat-label">Inbox</span><span class="stat-value ok"
+              id="rStatInbox">Empty</span></div>
+        </div>
+        <div style="margin-top:14px;">
+          <div
+            style="font-size:0.68rem; color:var(--muted); margin-bottom:6px; letter-spacing:0.08em; text-transform:uppercase;">
+            Reconstructed Message</div>
+          <div id="reconstructed"
+            style="font-family:var(--font-mono);font-size:0.72rem;color:var(--cyan);min-height:40px;padding:8px;background:rgba(0,180,220,0.05);border-radius:6px;border:1px solid var(--border);word-break:break-all;">
+            —</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== STATS STRIP ===== -->
+    <div class="stats-strip">
+      <div class="stat-card cyan">
+        <div class="sc-val" id="stTotalFrames">0</div>
+        <div class="sc-lbl">Total Frames</div>
+      </div>
+      <div class="stat-card green">
+        <div class="sc-val" id="stACKed">0</div>
+        <div class="sc-lbl">ACK'd</div>
+      </div>
+      <div class="stat-card red">
+        <div class="sc-val" id="stNAKed">0</div>
+        <div class="sc-lbl">NAK / Corrupt</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="sc-val" id="stRetx">0</div>
+        <div class="sc-lbl">Retransmissions</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="sc-val" id="stEfficiency">—</div>
+        <div class="sc-lbl">Efficiency</div>
+      </div>
+    </div>
+
+    <!-- ===== EVENT LOG ===== -->
+    <div class="panel">
+      <div class="panel-title">Network Event Log</div>
+      <div class="log-terminal" id="logTerminal">
+        <div class="log-entry"><span class="log-ts">[system]</span><span class="log-info">Hospital Secure Network
+            simulation ready. Configure and press Run.</span></div>
+      </div>
+    </div>
+
+  </div><!-- /page-wrap -->
+
+  <!-- =====================================================================
+     JAVASCRIPT — Full Simulation Engine
+     Mirrors the Python logic: framing, CRC, ACK/NAK, Go-Back-N ARQ
+     ===================================================================== -->
+  <script>
+    "use strict";
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // DUMMY DATA (mirrors nodes.py — no real patient data)
+    // ─────────────────────────────────────────────────────────────────────────────
+    const DUMMY_MESSAGES = {
+      ER_to_ICU_0: { sender: "Emergency Room (ER)", receiver: "Intensive Care Unit (ICU)", msg: "PatientID:P001 Status:Stable BP:120/80 HR:72" },
+      ER_to_ICU_1: { sender: "Emergency Room (ER)", receiver: "Intensive Care Unit (ICU)", msg: "PatientID:P002 Status:Critical BP:90/60 HR:110" },
+      ER_to_ICU_2: { sender: "Emergency Room (ER)", receiver: "Intensive Care Unit (ICU)", msg: "PatientID:P003 Status:Improving Temp:98.6F" },
+      Lab_to_Ward_0: { sender: "Laboratory", receiver: "General Ward", msg: "PatientID:P004 TestResult:BloodSugar:Normal" },
+      Lab_to_Ward_1: { sender: "Laboratory", receiver: "General Ward", msg: "PatientID:P005 TestResult:HbA1c:6.5 Diagnosis:PreDiabetic" },
+      Pharmacy_to_ICU_0: { sender: "Pharmacy", receiver: "Intensive Care Unit (ICU)", msg: "PatientID:P007 Medication:Amoxicillin Dose:500mg" },
+    };
+
+    const FRAME_SIZE = 20;
+    const MAX_RETRIES = 10;
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // CRC-32 (mirrors crc.py — pure JS implementation)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function buildCRCTable() {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        table[i] = c;
+      }
+      return table;
+    }
+    const CRC_TABLE = buildCRCTable();
+
+    function computeCRC(str) {
+      let crc = 0xFFFFFFFF;
+      const encoded = new TextEncoder().encode(str);
+      for (const byte of encoded) crc = CRC_TABLE[(crc ^ byte) & 0xFF] ^ (crc >>> 8);
+      return ((crc ^ 0xFFFFFFFF) >>> 0).toString(16).toUpperCase().padStart(8, '0');
+    }
+
+    function verifyCRC(seq, data, receivedCRC) {
+      return computeCRC(`${seq}${data}`) === receivedCRC;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // FRAMING (mirrors framing.py)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function createFrames(message) {
+      const frames = [];
+      for (let i = 0; i < message.length; i += FRAME_SIZE) {
+        const chunk = message.slice(i, i + FRAME_SIZE);
+        const seq = frames.length;
+        frames.push({ seq, data: chunk, crc: computeCRC(`${seq}${chunk}`) });
+      }
+      return frames;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // CHANNEL (mirrors channel.py)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function transmitFrame(frame, corruptionRate) {
+      const copy = { ...frame };
+      if (Math.random() < corruptionRate) {
+        copy.crc = "CORRUPTED";
+        copy._corrupted = true;
+      } else {
+        copy._corrupted = false;
+      }
+      return copy;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // ACK (mirrors ack.py)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function processFrame(frame) {
+      if (verifyCRC(frame.seq, frame.data, frame.crc)) {
+        return { type: "ACK", seq: frame.seq, data: frame.data };
+      } else {
+        return { type: "NAK", seq: frame.seq, data: null };
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // DOM HELPERS
+    // ─────────────────────────────────────────────────────────────────────────────
+    function $(id) { return document.getElementById(id); }
+
+    let stepDelay = 500;   // ms between steps (from speed select)
+    let paused = false;
+    let stopSim = false;
+    let simRunning = false;
+
+    // Stats counters
+    let stat = { sent: 0, acked: 0, naked: 0, retx: 0 };
+    let totalFrames = 0;
+
+    function sleep(ms) {
+      return new Promise(resolve => {
+        const interval = setInterval(() => {
+          if (!paused) { clearInterval(interval); resolve(); }
+        }, 50);
+        // If not paused, resolve after ms
+        if (!paused) { clearInterval(interval); setTimeout(resolve, ms); }
+      });
+    }
+
+    // Sleep that respects pause
+    function waitStep(ms) {
+      return new Promise(resolve => {
+        let elapsed = 0;
+        const tick = 50;
+        const id = setInterval(() => {
+          if (stopSim) { clearInterval(id); resolve(); return; }
+          if (!paused) elapsed += tick;
+          if (elapsed >= ms) { clearInterval(id); resolve(); }
+        }, tick);
+      });
+    }
+
+    function logEntry(type, text) {
+      const term = $('logTerminal');
+      const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.innerHTML = `<span class="log-ts">[${ts}]</span><span class="log-${type}">${text}</span>`;
+      term.appendChild(div);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function logSep(label) {
+      const term = $('logTerminal');
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.innerHTML = `<span class="log-sep">─────────────── ${label} ───────────────</span>`;
+      term.appendChild(div);
+    }
+
+    function updateStats() {
+      $('sStatSent').textContent = stat.sent;
+      $('sStatRetx').textContent = stat.retx;
+      $('rStatRecv').textContent = stat.acked;
+      $('rStatErr').textContent = stat.naked;
+      $('stTotalFrames').textContent = totalFrames;
+      $('stACKed').textContent = stat.acked;
+      $('stNAKed').textContent = stat.naked;
+      $('stRetx').textContent = stat.retx;
+      if (stat.sent > 0) {
+        const eff = Math.round((totalFrames / stat.sent) * 100);
+        $('stEfficiency').textContent = eff + '%';
+      }
+    }
+
+    function updateProgress(acked, total) {
+      const pct = Math.round((acked / total) * 100);
+      $('progBar').style.width = pct + '%';
+      $('progPct').textContent = pct + '%';
+      if (pct >= 100) $('progBar').classList.add('complete');
+    }
+
+    function setFrameState(seq, state, badge) {
+      const chip = document.querySelector(`[data-seq="${seq}"]`);
+      if (!chip) return;
+      chip.className = `frame-chip state-${state}`;
+      const bs = chip.querySelector('.frame-status');
+      if (bs && badge) { bs.textContent = badge; bs.className = `frame-status ${state === 'ok' ? 'ok' : state === 'corrupt' ? 'bad' : 'wait'}`; }
+    }
+
+    function updateWindowViz(base, nextSeq, winSize, total, corruptSeq) {
+      const track = $('windowTrack');
+      track.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'w-slot';
+        let cls = '', tag = '';
+        if (i < base) { cls = 'ws-acked'; tag = 'ACK'; }
+        else if (i === corruptSeq) { cls = 'ws-corrupt'; tag = 'ERR'; }
+        else if (i < nextSeq) { cls = 'ws-sending'; tag = 'SENT'; }
+        else if (i < base + winSize) { cls = 'ws-window'; tag = 'PEND'; }
+        else { cls = 'ws-outside'; tag = ''; }
+        slot.classList.add(cls);
+        slot.innerHTML = `<span class="ws-num">${i}</span><span class="ws-tag">${tag}</span>`;
+        track.appendChild(slot);
+      }
+      $('wBase').textContent = base;
+      $('wNext').textContent = nextSeq;
+      $('wSize').textContent = winSize;
+      $('sStatBase').textContent = base;
+    }
+
+    // Animate a packet flying across the channel pipe
+    async function animatePacket(label, isFwd, state) {
+      const pkt = isFwd ? $('pktFwd') : $('pktBck');
+      pkt.textContent = label;
+      pkt.className = 'packet-anim ' + state;
+      void pkt.offsetWidth; // force reflow
+      pkt.classList.add(isFwd ? 'flying-fwd' : 'flying-bck');
+      pkt.style.opacity = '1';
+      await waitStep(850);
+      pkt.style.opacity = '0';
+      pkt.className = 'packet-anim';
+    }
+
+    // Render initial frame chips in the frame panel
+    function renderFrameChips(frames) {
+      const container = $('framesContainer');
+      container.innerHTML = '';
+      frames.forEach(f => {
+        const chip = document.createElement('div');
+        chip.className = 'frame-chip state-idle';
+        chip.setAttribute('data-seq', f.seq);
+        chip.innerHTML = `
+      <div class="fc-seq">Frame ${f.seq}</div>
+      <div class="fc-data">${f.data}</div>
+      <div class="fc-crc">CRC: ${f.crc}</div>
+      <div class="frame-status wait">IDLE</div>
+    `;
+        container.appendChild(chip);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // STOP-AND-WAIT SIMULATION
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function runStopAndWait(frames, corrRate) {
+      logSep("STOP-AND-WAIT ARQ  (Window = 1)");
+      logEntry('info', `Total frames: ${frames.length} | Corruption rate: ${Math.round(corrRate * 100)}%`);
+      const received = [];
+      stat.sent = 0; stat.acked = 0; stat.naked = 0; stat.retx = 0;
+      updateWindowViz(0, 0, 1, frames.length, -1);
+
+      for (const frame of frames) {
+        if (stopSim) break;
+        let attempts = 0;
+        let done = false;
+
+        while (!done && attempts <= MAX_RETRIES) {
+          if (stopSim) break;
+          attempts++;
+          stat.sent++;
+          setFrameState(frame.seq, 'sending', 'SEND');
+          updateWindowViz(frame.seq, frame.seq + 1, 1, frames.length, -1);
+          logEntry('info', `&rarr; SEND Frame ${frame.seq} | Data: "${frame.data}" | CRC: ${frame.crc}${attempts > 1 ? ` <span style="color:var(--yellow)">(attempt #${attempts})</span>` : ''}`);
+
+          await animatePacket(`F${frame.seq}`, true, '');
+          await waitStep(stepDelay * 0.4);
+
+          const received_frame = transmitFrame(frame, corrRate);
+          const ack = processFrame(received_frame);
+
+          if (ack.type === 'ACK') {
+            stat.acked++;
+            setFrameState(frame.seq, 'ok', 'ACK');
+            logEntry('ok', `&larr; [OK] ACK(${frame.seq}) — Frame delivered successfully.`);
+            await animatePacket(`ACK(${frame.seq})`, false, 'ack-back');
+            received.push(ack.data);
+            done = true;
+          } else {
+            stat.naked++;
+            if (attempts <= MAX_RETRIES) stat.retx++;
+            setFrameState(frame.seq, 'corrupt', 'NAK');
+            logEntry('err', `&larr; [!!] NAK(${frame.seq}) — CRC mismatch! Frame corrupted.`);
+            await animatePacket(`NAK(${frame.seq})`, false, 'nak-back');
+            if (attempts <= MAX_RETRIES) {
+              logEntry('warn', `[~] RETRANSMIT Frame ${frame.seq} (retry ${attempts}/${MAX_RETRIES})`);
+            }
+          }
+          updateStats();
+          updateProgress(stat.acked, totalFrames);
+          await waitStep(stepDelay);
+        }
+
+        if (!done) {
+          logEntry('err', `[!!] FAILED: Frame ${frame.seq} could not be delivered after ${MAX_RETRIES} retries.`);
+        }
+      }
+      return received;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // GO-BACK-N ARQ SIMULATION
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function runGoBackN(frames, winSize, corrRate) {
+      logSep(`GO-BACK-N ARQ  (Window = ${winSize})`);
+      logEntry('info', `Total frames: ${frames.length} | Window: ${winSize} | Corruption: ${Math.round(corrRate * 100)}%`);
+
+      const receivedData = new Array(frames.length).fill(null);
+      let base = 0, nextSeq = 0, retryCount = 0;
+      stat.sent = 0; stat.acked = 0; stat.naked = 0; stat.retx = 0;
+
+      while (base < frames.length && !stopSim) {
+
+        // Send frames within the window
+        while (nextSeq < frames.length && nextSeq < base + winSize && !stopSim) {
+          stat.sent++;
+          setFrameState(nextSeq, 'sending', 'SEND');
+          updateWindowViz(base, nextSeq + 1, winSize, frames.length, -1);
+          logEntry('info', `&rarr; SEND Frame ${nextSeq} | Data: "${frames[nextSeq].data}" | CRC: ${frames[nextSeq].crc}`);
+          await animatePacket(`F${nextSeq}`, true, '');
+          await waitStep(stepDelay * 0.3);
+          nextSeq++;
+          updateStats();
+        }
+
+        // Process responses for this window batch
+        let errorAt = -1;
+
+        for (let seq = base; seq < nextSeq && !stopSim; seq++) {
+          const rx = transmitFrame(frames[seq], corrRate);
+          const ack = processFrame(rx);
+
+          if (ack.type === 'ACK') {
+            stat.acked++;
+            setFrameState(seq, 'ok', 'ACK');
+            logEntry('ok', `&larr; [OK] ACK(${seq}) — Frame ${seq} received correctly.`);
+            await animatePacket(`ACK(${seq})`, false, 'ack-back');
+            receivedData[seq] = ack.data;
+          } else {
+            stat.naked++;
+            setFrameState(seq, 'corrupt', 'NAK');
+            updateWindowViz(base, nextSeq, winSize, frames.length, seq);
+            logEntry('err', `&larr; [!!] NAK(${seq}) — CRC mismatch! Corruption detected on Frame ${seq}.`);
+            await animatePacket(`NAK(${seq})`, false, 'nak-back');
+            if (errorAt === -1) errorAt = seq;
+            break;
+          }
+          updateProgress(stat.acked, totalFrames);
+          updateStats();
+          await waitStep(stepDelay * 0.5);
+        }
+
+        if (errorAt !== -1) {
+          retryCount++;
+          stat.retx++;
+          if (retryCount > MAX_RETRIES) {
+            logEntry('err', `[!!] FAILED: Frame ${errorAt} could not be delivered after max retries.`);
+            break;
+          }
+          logEntry('warn', `[~] GO-BACK-N: Retransmitting from Frame ${errorAt} (retry ${retryCount}/${MAX_RETRIES})`);
+          // Reset corrupted frame chips back to idle
+          for (let i = errorAt; i < nextSeq; i++) setFrameState(i, 'idle', 'IDLE');
+          nextSeq = errorAt;   // Go back to error frame
+        } else {
+          // Slide window forward
+          base = nextSeq;
+        }
+        updateStats();
+        updateProgress(stat.acked, totalFrames);
+        await waitStep(stepDelay * 0.3);
+      }
+
+      return receivedData.filter(d => d !== null);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // MAIN SIMULATION ORCHESTRATOR
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function runSimulation() {
+      const channelKey = $('channelSelect').value;
+      const protocol = $('protocolSelect').value;
+      const corrRate = parseInt($('corrRate').value) / 100;
+      const winSize = parseInt($('winSize').value);
+      stepDelay = parseInt($('speedSelect').value);
+
+      const cfg = DUMMY_MESSAGES[channelKey];
+      if (!cfg) return;
+
+      // Reset UI
+      stopSim = false; paused = false;
+      $('logTerminal').innerHTML = '';
+      $('resultBanner').style.display = 'none';
+      $('resultBanner').className = 'result-banner';
+      $('reconstructed').textContent = '—';
+      $('rStatInbox').textContent = 'Empty';
+      $('progBar').style.width = '0%';
+      $('progBar').classList.remove('complete');
+      $('progPct').textContent = '0%';
+
+      // Update department names
+      $('senderName').textContent = cfg.sender;
+      $('receiverName').textContent = cfg.receiver;
+      $('fullMessage').textContent = cfg.msg;
+
+      // Framing
+      const frames = createFrames(cfg.msg);
+      totalFrames = frames.length;
+      renderFrameChips(frames);
+      $('stTotalFrames').textContent = totalFrames;
+      $('windowTrack').innerHTML = '';
+      updateWindowViz(0, 0, winSize, totalFrames, -1);
+
+      // Activate dept icons
+      $('senderIcon').classList.add('active');
+      $('receiverIcon').classList.add('active');
+      $('sStatStatus').textContent = 'TRANSMITTING';
+      $('rStatStatus').textContent = 'RECEIVING';
+
+      // Lock controls
+      $('btnStart').disabled = true;
+      $('btnPause').disabled = false;
+      simRunning = true;
+
+      logSep('SIMULATION START');
+      logEntry('info', `Sender: ${cfg.sender}  →  Receiver: ${cfg.receiver}`);
+      logEntry('info', `Message: "${cfg.msg}"`);
+      logEntry('info', `Frames created: ${frames.length} | Frame size: ${FRAME_SIZE} chars`);
+      frames.forEach(f => logEntry('info', `  [Frame ${f.seq}] Data: "${f.data}" | CRC: ${f.crc}`));
+
+      let finalData = [];
+      let protocolLabel = '';
+
+      if (protocol === 'saw') {
+        protocolLabel = 'Stop-and-Wait (W=1)';
+        finalData = await runStopAndWait(frames, corrRate);
+      } else if (protocol === 'gbn') {
+        protocolLabel = `Go-Back-N (W=${winSize})`;
+        finalData = await runGoBackN(frames, winSize, corrRate);
+      } else {
+        // Both — run SAW first then GBN
+        logSep('PROTOCOL A: STOP-AND-WAIT');
+        const sawData = await runStopAndWait(frames, corrRate);
+        const sawMsg = sawData.join('');
+
+        // Reset frame chips for round 2
+        frames.forEach(f => setFrameState(f.seq, 'idle', 'IDLE'));
+        stat.sent = 0; stat.acked = 0; stat.naked = 0; stat.retx = 0;
+
+        logSep('PROTOCOL B: GO-BACK-N ARQ');
+        const gbnData = await runGoBackN(frames, winSize, corrRate);
+        finalData = gbnData;
+        protocolLabel = `Both Protocols`;
+
+        logSep('COMPARISON');
+        logEntry('done', `Stop-and-Wait  →  Delivered: ${sawData.length}/${frames.length} frames`);
+        logEntry('done', `Go-Back-N W=${winSize}  →  Delivered: ${gbnData.length}/${frames.length} frames`);
+        if (sawMsg) logEntry('ok', `SAW Reconstructed: "${sawMsg}"`);
+      }
+
+      // Final result
+      const fullMsg = finalData.join('');
+      const success = fullMsg === cfg.msg;
+
+      logSep('TRANSMISSION COMPLETE');
+
+      const banner = $('resultBanner');
+      if (success) {
+        logEntry('done', `[OK] MESSAGE DELIVERED SUCCESSFULLY via ${protocolLabel}`);
+        logEntry('ok', `Reconstructed: "${fullMsg}"`);
+        banner.className = 'result-banner success';
+        banner.innerHTML = `<strong>[OK] Message Delivered Successfully</strong>Protocol: <code>${protocolLabel}</code> &nbsp;|&nbsp; Frames: <code>${stat.acked}/${totalFrames}</code> &nbsp;|&nbsp; Retransmissions: <code>${stat.retx}</code>`;
+        $('reconstructed').textContent = fullMsg;
+        $('rStatInbox').textContent = '1 msg';
+        $('rStatStatus').textContent = 'DELIVERED';
+      } else {
+        logEntry('err', `[!!] DELIVERY FAILED — Could not reconstruct full message.`);
+        banner.className = 'result-banner fail';
+        banner.innerHTML = `<strong>[!!] Delivery Failed</strong>Some frames could not be recovered. Try increasing Max Retries or lowering corruption rate.`;
+        $('rStatStatus').textContent = 'FAILED';
+      }
+      banner.style.display = 'block';
+      updateProgress(totalFrames, totalFrames);
+      updateStats();
+
+      $('senderIcon').classList.remove('active');
+      $('receiverIcon').classList.remove('active');
+      $('sStatStatus').textContent = 'DONE';
+      $('btnStart').disabled = false;
+      $('btnPause').disabled = true;
+      simRunning = false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // UI CONTROLS
+    // ─────────────────────────────────────────────────────────────────────────────
+    $('corrRate').addEventListener('input', () => {
+      $('corrVal').textContent = $('corrRate').value + '%';
+    });
+    $('winSize').addEventListener('input', () => {
+      $('winVal').textContent = $('winSize').value;
+    });
+
+    $('btnStart').addEventListener('click', runSimulation);
+
+    $('btnPause').addEventListener('click', () => {
+      paused = !paused;
+      $('btnPause').textContent = paused ? '▶ Resume' : '⏸ Pause';
+    });
+
+    $('btnReset').addEventListener('click', () => {
+      stopSim = true; paused = false; simRunning = false;
+      setTimeout(() => {
+        stopSim = false;
+        $('logTerminal').innerHTML = '<div class="log-entry"><span class="log-ts">[system]</span><span class="log-info">Reset. Configure and press Run.</span></div>';
+        $('framesContainer').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;">Select a channel and run the simulation.</div>';
+        $('resultBanner').style.display = 'none';
+        $('reconstructed').textContent = '—';
+        $('progBar').style.width = '0%'; $('progBar').classList.remove('complete'); $('progPct').textContent = '0%';
+        $('windowTrack').innerHTML = '';
+        $('fullMessage').textContent = '—';
+        $('rStatInbox').textContent = 'Empty';
+        $('rStatStatus').textContent = 'WAITING';
+        $('sStatStatus').textContent = 'READY';
+        $('senderIcon').classList.remove('active'); $('receiverIcon').classList.remove('active');
+        ['stACKed', 'stNAKed', 'stRetx', 'sStatSent', 'sStatRetx', 'rStatRecv', 'rStatErr'].forEach(id => $(id).textContent = '0');
+        $('stEfficiency').textContent = '—'; $('stTotalFrames').textContent = '0';
+        $('sStatBase').textContent = '—'; $('wBase').textContent = '—'; $('wNext').textContent = '—'; $('wSize').textContent = '—';
+        $('btnStart').disabled = false; $('btnPause').disabled = true; $('btnPause').textContent = '⏸ Pause';
+      }, 200);
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        $('tabChannel').style.display = tab === 'channel' ? '' : 'none';
+        $('tabWindow').style.display = tab === 'window' ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+
+</html>
