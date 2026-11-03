@@ -1,0 +1,14 @@
+# requirements.txt
+# Project: Secure Hospital Network for Reliable Patient Data Communication
+# Module : Feature/Routing Protocols
+#
+# This project uses ONLY Python standard library modules:
+#   - random   (built-in) — for corruption simulation
+#   - copy     (built-in) — for deep-copying frames
+#   - os, sys  (built-in) — for path manipulation in main.py
+#
+# No external packages are required.
+# Tested with Python 3.7+
+#
+# To install (nothing to install — just verify Python version):
+#   python --version   →  should print Python 3.7 or higher
